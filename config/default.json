@@ -1,0 +1,59 @@
+{
+    "dbServer": {
+        "database": "drive",
+        "host": "mongodb://localhost:27017/oa_drive"
+    },
+    "webServer": {
+        "url": "http://localhost:3003",
+        "port": 3003
+    },
+    "queueServer": {
+        "disabled": true
+    },
+    "system": {
+        "name": "Open Age",
+        "emailId": "no_reply@openage.in"
+    },
+    "auth": {
+        "provider": "directory"
+    },
+    "storage": {
+        "provider": "file-store"
+    },
+    "message": {
+        "provider": "send-it"
+    },
+    "logger": {
+        "console": {
+            "level": "silly",
+            "handleExceptions": true,
+            "json": false,
+            "colorize": true
+        }
+    },
+    "providers": {
+        "file-store": {
+            "dir": "public/files",
+            "root": "http://localhost:3030/files"
+        },
+        "aws-s3": {
+            "accessKeyId": "placeholder",
+            "secretAccessKey": "placeholder",
+            "bucketName": "placeholder"
+        },
+        "cloudnary": {
+            "cloud_name": "placeholder",
+            "api_key": "placeholder",
+            "api_secret": "placeholder"
+        },
+        "directory": {
+            "url": "http://localhost:3001/api"
+        },
+        "send-it": {
+            "url": "http://localhost:3002/api"
+        }
+    },
+    "api": {
+        "errors": {}
+    }
+}
