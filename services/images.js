@@ -21,3 +21,4 @@ exports.thumbnailFromUrl = (url) => {
         })
     })
 }
+

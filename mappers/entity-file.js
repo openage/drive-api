@@ -16,3 +16,9 @@ exports.toModel = entity => {
 
     return model
 }
+
+exports.toSearchModel = (entities) => {
+    return entities.map(entity => {
+        return exports.toModel(entity)
+    })
+}

@@ -8,7 +8,7 @@ const create = async (model, context) => {
 
     let owner = await users.get(model.owner || context.user, context)
 
-    let parent = model.parent ? get(model.parent, context) : null
+    let parent = model.parent ? await get(model.parent, context) : null
 
     let folder = await new db.folder({
         name: model.name || 'root',
@@ -100,6 +100,25 @@ const update = async (id, model, context) => {
     // if name is updated - update all the  files.tag.folder
 }
 
+const getChildren = async (parentId, context) => {
+    let log = context.logger.start('services/folders:getChildrens')
+
+    if (!parentId) {
+        throw new Error(`parentId required`)
+    }
+
+    log.debug(`fetching child folder's for folder id: ${parentId}`)
+
+    let children = await db.folder.find({
+        parent: parentId
+    })
+
+    log.end()
+
+    return children
+}
+
 exports.get = get
 exports.create = create
 exports.update = update
+exports.getChildren = getChildren

@@ -1,14 +1,19 @@
 'use strict'
 let files = require('../services/files')
-let mapper = require('../mappers').file
+let mapper = require('../mappers/file')
+// const paging = require('../helpers/paging')
 
 const extractQuery = (req, context) => {
     let query = {
         name: req.query.name || req.params.name || req.body.name,
         isPublic: req.query['is-public'] || req.params.isPublic || req.body.isPublic,
         isTemplate: req.query['is-template'] || req.params.isTemplate || req.body.isTemplate,
-        isVirtual: req.query['is-virtual'] || req.params.isVirtual || req.body.isVirtual
+        isVirtual: req.query['is-virtual'] || req.params.isVirtual || req.body.isVirtual,
+        isFavourite: !!(req.query.isFavourite === 'true' || req.query.isFavourite === true),
+        isMostViewed: !!(req.query.isMostViewed === 'true' || req.query.isMostViewed === true),
+        isRecent: !!(req.query.isRecent === 'true' || req.query.isRecent === true)
     }
+
     if (req.body.entity) {
         query.entity = req.body.entity
     } else if (req.query['entity-type']) {
@@ -49,6 +54,18 @@ const extractQuery = (req, context) => {
     } else if (req.query['owner-id']) {
         query.owner = {
             id: req.query['owner-id']
+        }
+    }
+
+    if (req.body.entityOrganization) {
+        query.entityOrganization = req.body.entityOrganization
+    } else if (req.query['entity-organization-id']) {
+        query.entityOrganization = {
+            id: req.query['entity-organization-id']
+        }
+    } else if (req.query['entity-organization-code']) {
+        query.entityOrganization = {
+            code: req.query['entity-organization-code']
         }
     }
 
@@ -104,6 +121,18 @@ exports.create = async (req) => {
         owner = req.context.user
     }
 
+    let entityOrganization = {}
+
+    if (req.body.entityOrganization) {
+        entityOrganization = req.body.entityOrganization
+    } else if (req.query['entity-organization-id']) {
+        entityOrganization.id = req.query['entity-organization-id']
+    } else if (req.query['entity-organization-code']) {
+        entityOrganization.code = req.query['entity-organization-code']
+    } else {
+        entityOrganization = req.context.organization
+    }
+
     let isPublic = req.query['is-public'] || req.params.isPublic || req.body.isPublic
     let isTemplate = req.query['is-template'] || req.params.isTemplate || req.body.isTemplate
     let isVirtual = req.query['is-virtual'] || req.params.isVirtual || req.body.isVirtual
@@ -118,6 +147,7 @@ exports.create = async (req) => {
         isVirtual: isVirtual,
         entity: entity,
         folder: folder,
+        entityOrganization: entityOrganization,
         file: req.files.file
     }, req.context)
 
@@ -130,8 +160,40 @@ exports.get = async (req) => {
     return mapper.toModel(list)
 }
 
+exports.getById = async (req) => {
+    let log = req.context.logger.start('api/files:getById')
+
+    let file = await files.getById(req.params.id, req.context)
+
+    log.end()
+    return mapper.toModel(file)
+}
+
 exports.search = async (req) => {
     let query = extractQuery(req, req.context)
     let list = await files.search(query, req.context)
-    return mapper.toModels(list)
+    return mapper.toSearchModel(list)
+}
+
+exports.update = async (req) => {
+    let log = req.context.logger.start('api/files:update')
+
+    let model = req.body
+
+    let file = await files.update(model, req.params.id, req.context)
+
+    log.end()
+    return mapper.toModel(file)
+}
+
+exports.remove = async (req, res) => {
+    await files.remove(req.params.id, req.context)
+
+    return true
+}
+
+exports.streams = async (req, res) => {
+    req.context.logger.start('api/files:streams')
+
+    return files.streams(req.params.id, req.headers.range, res, req.context)
 }

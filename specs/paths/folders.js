@@ -3,7 +3,20 @@ module.exports = [{
     post: {
         summary: 'create a folder in root',
         description: 'create a folder in root of the entity',
-        parameters: ['x-role-key']
+        parameters: ['x-role-key',
+            { in: 'query', name: 'owner-role-id', type: 'string', required: false },
+            { in: 'query', name: 'owner-role-code', type: 'string', required: false },
+            { in: 'query', name: 'owner-id', type: 'string', required: false }
+        ]
+    },
+    get: {
+        parameters: ['x-role-key',
+            { in: 'query', name: 'owner-role-id', type: 'string', required: false },
+            { in: 'query', name: 'owner-role-code', type: 'string', required: false },
+            { in: 'query', name: 'owner-id', type: 'string', required: false },
+            { in: 'query', name: 'isPublic', type: 'boolean', required: false },
+            { in: 'query', name: 'isParent', type: 'boolean', required: false }
+        ]
     }
 }, {
     url: '/{id}',

@@ -20,7 +20,7 @@ module.exports.configure = function (app, logger) {
         res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization')
         next()
     })
-    app.use(cors());
+    app.use(cors())
     app.use(bodyParser.json())
 
     app.use(bodyParser.urlencoded({

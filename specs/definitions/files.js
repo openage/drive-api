@@ -19,15 +19,13 @@ module.exports = {
     isVirtual: 'boolean',
     isPublic: 'boolean',
 
+    isFavourite: 'boolean',
+
     folder: folder,
 
     owner: user,
     uploadedBy: user,
-    sharedWith: [{
-        role: 'string',
-        expires: 'date',
-        user: user
-    }],
+
     organization: organization,
     tenant: tenant
 

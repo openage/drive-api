@@ -10,15 +10,15 @@ exports.toModel = function (entity) {
     }
 
     if (entity.parent) {
-        model.parent = {
+        model.parent = entity.parent._doc ? {
             id: entity.parent.id,
             thumbnail: entity.parent.thumbnail,
             name: entity.parent.name,
             isPublic: entity.parent.isPublic
-        }
+        } : { id: entity.parent.toString() }
     }
 
-    if (entity.owner) {
+    if (entity.owner && entity.owner._doc) {
         model.owner = {
             id: entity.owner.id,
             profile: {
@@ -29,6 +29,10 @@ exports.toModel = function (entity) {
                     thumbnail: entity.owner.profile.pic.thumbnail
                 }
             }
+        }
+    } else {
+        model.owner = {
+            id: entity.owner.toString()
         }
     }
 
@@ -64,4 +68,10 @@ exports.toModel = function (entity) {
     }
 
     return model
+}
+
+exports.toSearchModel = (entities) => {
+    return entities.map(entity => {
+        return exports.toModel(entity)
+    })
 }

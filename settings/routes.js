@@ -62,6 +62,36 @@ module.exports.configure = (app, logger) => {
     })
 
     var api = apiRoutes(app)
+    api.model('files')
+        .register([{
+            action: 'GET',
+            method: 'search',
+            filter: auth.requiresRoleKey
+        }, {
+            action: 'GET',
+            method: 'getById',
+            url: '/:id',
+            filter: auth.requiresRoleKey
+        }, {
+            action: 'POST',
+            method: 'create',
+            filter: [multipartMiddleware, auth.requiresRoleKey]
+        }, {
+            action: 'PUT',
+            method: 'update',
+            url: '/:id',
+            filter: auth.requiresRoleKey
+        }, {
+            action: 'DELETE',
+            method: 'remove',
+            url: '/:id',
+            filter: auth.requiresRoleKey
+        }, {
+            action: 'GET',
+            method: 'streams',
+            url: '/:id/streams',
+            filter: auth.requiresRoleKey
+        }])
 
     api.model({
         root: ':entityType/:entityId/files',
@@ -84,24 +114,12 @@ module.exports.configure = (app, logger) => {
         action: 'GET',
         method: 'search',
         filter: auth.requiresRoleKey
+    }, {
+        action: 'PUT',
+        method: 'update',
+        url: '/:id',
+        filter: auth.requiresRoleKey
     }])
-    api.model('files')
-        .register([{
-            action: 'GET',
-            method: 'get',
-            url: '/:id',
-            filter: auth.requiresRoleKey
-        }, {
-            action: 'PUT',
-            method: 'update',
-            url: '/:id',
-            filter: auth.requiresRoleKey
-        }, {
-            action: 'DELETE',
-            method: 'remove',
-            url: '/:id',
-            filter: auth.requiresRoleKey
-        }])
 
     api.model({ root: 'entityFiles', controller: 'entity-files' }).register([{
         action: 'POST',
@@ -109,10 +127,21 @@ module.exports.configure = (app, logger) => {
         filter: auth.requiresRoleKey
     }])
 
+    // api.model('streams')
+    //     .register([{
+    //         action: 'GET',
+    //         method: 'get',
+    //         url: '/:id'
+    //     }])
+
     api.model('folders')
         .register([{
             action: 'POST',
             method: 'create',
+            filter: auth.requiresRoleKey
+        }, {
+            action: 'GET',
+            method: 'search',
             filter: auth.requiresRoleKey
         }, {
             url: '/:id',

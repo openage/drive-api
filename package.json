@@ -1,6 +1,6 @@
 {
     "name": "drive-api",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Files and Folders Backend",
     "repository": {
         "type": "git",
@@ -14,7 +14,7 @@
         "share",
         "api"
     ],
-    "author": "Sunny Parkash <sunny.parkash@email.com> (https://github.com/sunnyparkash)",
+    "author": "Sunny Parkash <sunny.parkash@gmail.com> (https://github.com/sunnyparkash)",
     "license": "MIT",
     "scripts": {
         "start": "node /bin/app.js",
@@ -29,6 +29,7 @@
         "aws-sdk": "^2.238.1",
         "bluebird": "^3.5.1",
         "body-parser": "^1.18.2",
+        "btoa": "^1.2.1",
         "change-case": "^3.0.2",
         "config": "^1.30.0",
         "connect-flash": "^0.1.1",
@@ -52,10 +53,12 @@
         "mongoose-paginate": "^5.0.3",
         "mongoose-query-paginate": "^1.0.3",
         "morgan": "^1.9.0",
+        "music-metadata": "^3.5.1",
         "node-rest-client": "^3.1.0",
         "node-rest-client-promise": "^3.1.0",
         "npm": "^6.0.1",
         "param-case": "^2.1.1",
+        "s3-readable-stream": "0.0.6",
         "s3fs": "^2.5.0",
         "underscore": "^1.9.0",
         "uuid": "^3.2.1",

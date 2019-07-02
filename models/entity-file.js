@@ -17,5 +17,7 @@ module.exports = {
     folder: String,
 
     entityType: String, //  drivers
+
+    organization: { type: mongoose.Schema.Types.ObjectId, ref: 'organization' },
     tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'tenant' }
 }

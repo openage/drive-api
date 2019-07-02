@@ -20,6 +20,11 @@ module.exports = {
     path: String,
     store: String,
 
+    views: {
+        type: Number,
+        default: 0
+    },
+
     previous: {
         version: Number,
         timeStamp: Date,
@@ -42,7 +47,9 @@ module.exports = {
         user: { type: mongoose.Schema.Types.ObjectId, ref: 'user' }
     }],
 
+    entityOrganization: { type: mongoose.Schema.Types.ObjectId, ref: 'organization' },
+
     organization: { type: mongoose.Schema.Types.ObjectId, ref: 'organization' },
     tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'tenant' },
-    status: { type: String, enum: ['placeholder', 'active', 'archived', 'removed'] }
+    status: { type: String, enum: ['placeholder', 'active', 'archived', 'removed', 'trash'] }
 }

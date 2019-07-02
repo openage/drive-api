@@ -1,5 +1,5 @@
 module.exports = [{
-    url: '/',
+    url: '{entityType}/entityFiles',
     post: {
         summary: 'create entity-files',
         parameters: [

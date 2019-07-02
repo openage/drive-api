@@ -1,6 +1,7 @@
 'use strict'
 let awsBucketConfig = require('config').get('providers.aws-s3')
 let AWS = require('aws-sdk')
+const S3ReadableStream = require('s3-readable-stream')
 
 AWS.config.update({
     accessKeyId: awsBucketConfig.accessKeyId,
@@ -45,6 +46,23 @@ const createMultipartUpload = (param) => {
     })
 }
 
+const readStream = async (params, target) => {
+    const s3Client = new AWS.S3({
+        accessKeyId: awsBucketConfig.accessKeyId,
+        secretAccessKey: awsBucketConfig.secretAccessKey
+    })
+    const stream = new S3ReadableStream(s3Client, params)
+
+    stream.on('error', (err) => {
+        throw new Error(err)
+    })
+
+    await stream.pipe(target)
+
+    target.on('close', stream.destroy)
+}
+
 exports.completeMultipartUpload = completeMultipartUpload
 exports.uploadPart = uploadPart
 exports.createMultipartUpload = createMultipartUpload
+exports.readStream = readStream

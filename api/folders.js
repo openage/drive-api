@@ -1,5 +1,10 @@
 let folders = require('../services/folders')
+
 let files = require('../services/files')
+
+const userService = require('../services/users')
+
+const db = require('../models')
 
 let mapper = require('../mappers/folder')
 
@@ -48,5 +53,73 @@ exports.get = async (req) => {
         owner: owner
     }, req.context)
 
+    folder.folders = await folders.getChildren(folder.id, req.context)
+
     return mapper.toModel(folder)
+}
+
+exports.create = async (req) => {
+    let log = req.context.logger.start('api/folders:create')
+
+    const model = req.body
+
+    let owner = {
+        role: {}
+    }
+
+    if (req.body.owner) {
+        owner = req.body.owner
+    } else if (req.query['owner-role-id']) {
+        owner.role.id = req.query['owner-role-id']
+    } else if (req.query['owner-role-code']) {
+        owner.role.code = req.query['owner-role-code']
+    } else if (req.query['owner-id']) {
+        owner.id = req.query['owner-id']
+    } else {
+        owner = req.context.user
+    }
+
+    model.owner = owner
+
+    const folder = await folders.create(req.body, req.context)
+
+    log.end()
+    return mapper.toModel(folder)
+}
+
+exports.search = async (req) => {
+    let log = req.context.logger.start('api/folders:search')
+
+    let query = {}
+
+    let isParent = !!(req.query.isParent === 'true' || req.query.isParent === true)
+
+    if (isParent) {
+        query.parent = null
+    }
+
+    let owner = {
+        role: {}
+    }
+
+    if (req.query['owner-role-id']) {
+        owner.role.id = req.query['owner-role-id']
+    } else if (req.query['owner-role-code']) {
+        owner.role.code = req.query['owner-role-code']
+    } else if (req.query['owner-id']) {
+        owner.id = req.query['owner-id']
+    } else {
+        owner = req.context.user
+    }
+
+    query.owner = await userService.get(owner, req.context)
+
+    if (req.query.isPublic) {
+        query.isPublic = !!(req.query.isPublic === 'true' || req.query.isPublic === true)
+    }
+
+    const folderList = await db.folder.find(query)
+
+    log.end()
+    return mapper.toSearchModel(folderList)
 }

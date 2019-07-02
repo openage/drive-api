@@ -31,7 +31,10 @@ module.exports = [{
             { in: 'query', name: 'owner-role-id', type: 'string', required: false },
             { in: 'query', name: 'owner-role-code', type: 'string', required: false },
             { in: 'query', name: 'name', type: 'string', required: false },
-            { in: 'query', name: 'is-public', type: 'boolean', required: false }
+            { in: 'query', name: 'is-public', type: 'boolean', required: false },
+            { in: 'query', name: 'isFavourite', type: 'boolean', required: false },
+            { in: 'query', name: 'isMostViewed', type: 'boolean', required: false },
+            { in: 'query', name: 'isRecent', type: 'boolean', required: false }
         ]
     }
 }, {
@@ -68,9 +71,21 @@ module.exports = [{
             { in: 'query', name: 'is-public', type: 'boolean', required: false }
         ]
     }
-    // }, {
-    //     url: '/{id}',
-    //     get: { parameters: ['x-role-key'] },
-    //     put: { parameters: ['x-role-key'] },
-    //     delete: { parameters: ['x-role-key'] }
+}, {
+    url: '/{id}',
+    put: { parameters: ['x-role-key'] },
+    get: { parameters: ['x-role-key'] }
+    // delete: { parameters: ['x-role-key'] }
+}, {
+    url: '/{id}/streams',
+    get: {
+        summary: 'streams file',
+        description: 'read stream file',
+        parameters: [
+            'x-role-key',
+            { in: 'path', name: 'id', description: 'document id', type: 'string', required: true }
+        ]
+    }
+}, {
+
 }]

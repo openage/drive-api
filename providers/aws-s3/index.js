@@ -1,5 +1,6 @@
 const s3 = require('./s3')
 const fs = require('fs')
+const S3ReadableStream = require('s3-readable-stream')
 
 const uploadPart = async (partParams) => {
     var partNo = 1
@@ -50,6 +51,8 @@ exports.config = (awsBucketConfig) => {
             })
         }
 
+        console.log('part_params', partParams)
+
         let multipartUpload = await uploadPart(partParams)
 
         var doneParams = {
@@ -64,5 +67,16 @@ exports.config = (awsBucketConfig) => {
         return { url: completeUploadData.Location }
     }
 
-    return { store: store }
+    const streamFile = async (params, target) => {
+        return s3.readStream({
+            Bucket: awsBucketConfig.bucketName,
+            Key: params.key,
+            Range: params.range
+        }, target)
+    }
+
+    return {
+        store: store,
+        streamFile: streamFile
+    }
 }
