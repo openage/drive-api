@@ -45,7 +45,7 @@ const store = async (file, config) => {
 
     let parts = file.name.split('.')
 
-    let name = parts[0]
+    let name = parts[0].trim().replace(/ /g, "_")
     let ext = parts[1]
 
     let destDir = config.dir.startsWith('/') ? config.dir : path.join(appRoot.path, config.dir)

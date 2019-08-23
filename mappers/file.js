@@ -7,12 +7,14 @@ exports.toModel = function (entity) {
         thumbnail: entity.thumbnail,
         name: entity.name,
         identifier: entity.identifier,
+        size: entity.size,
         version: entity.version,
         description: entity.description,
         mimeType: entity.mimeType,
         isFavourite: entity.isFavourite || false,
         views: entity.views || 0,
-        isPublic: entity.isPublic
+        isPublic: entity.isPublic,
+        timeStamp: entity.timeStamp
     }
 
     if (entity.folder) {

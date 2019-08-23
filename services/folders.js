@@ -12,6 +12,7 @@ const create = async (model, context) => {
 
     let folder = await new db.folder({
         name: model.name || 'root',
+        status: model.status || 'active',
         parent: parent,
         isPublic: !!model.isPublic,
         owner: owner,
@@ -118,7 +119,31 @@ const getChildren = async (parentId, context) => {
     return children
 }
 
+const remove = async (id, context) => {
+    let folder = await db.folder.findById(id)
+
+    if (!folder) {
+        return 'folder does not exist'
+    }
+
+    if (folder.name == 'root') {
+        return `Root folder can not deleted`
+    }
+
+    await db.file.update({ folder: folder.id }, {
+        $set: {
+            status: 'trash'
+        }
+    }, { multi: true })
+
+    folder.status = 'trash'
+
+    return folder.save()
+}
+
 exports.get = get
-exports.create = create
 exports.update = update
+exports.create = create
+
+exports.remove = remove
 exports.getChildren = getChildren

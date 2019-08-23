@@ -8,6 +8,9 @@ const db = require('../models')
 
 let mapper = require('../mappers/folder')
 
+let users = require('../services/users')
+
+
 exports.get = async (req) => {
     let entity = null
 
@@ -81,7 +84,7 @@ exports.create = async (req) => {
 
     model.owner = owner
 
-    const folder = await folders.create(req.body, req.context)
+    const folder = await folders.get(req.body, req.context)
 
     log.end()
     return mapper.toModel(folder)
@@ -96,6 +99,16 @@ exports.search = async (req) => {
 
     if (isParent) {
         query.parent = null
+    }
+
+    if (req.query.status) {
+        query.status = req.query.status
+    } else {
+        query.status = { $ne: 'trash' }
+    }
+
+    if (req.context.organization) {
+        query.organization = req.context.organization
     }
 
     let owner = {
@@ -122,4 +135,21 @@ exports.search = async (req) => {
 
     log.end()
     return mapper.toSearchModel(folderList)
+}
+
+exports.remove = async (req) => {
+    await folders.remove(req.params.id, req.context)
+    return true
+}
+
+exports.bulkRemove = async (req) => {
+    let folderList = req.body
+
+    let count = 0
+
+    for (let file of folderList) {
+        await folders.remove(file.id, req.context).then(() => count += 1)
+    }
+
+    return `Total ${count} folder's removed`
 }

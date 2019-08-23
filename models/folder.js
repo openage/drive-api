@@ -2,10 +2,14 @@
 var mongoose = require('mongoose')
 
 module.exports = {
-    name: String,
+    name: {
+        type: String,
+        lowercase: true
+    },
     description: String,
     thumbnail: String,
     isPublic: Boolean,
+    status: String,
 
     parent: { type: mongoose.Schema.Types.ObjectId, ref: 'folder' },
 

@@ -137,6 +137,11 @@ module.exports.configure = (app, logger) => {
     api.model('folders')
         .register([{
             action: 'POST',
+            method: 'bulkRemove',
+            url: '/deletes',
+            filter: auth.requiresRoleKey
+        }, {
+            action: 'POST',
             method: 'create',
             filter: auth.requiresRoleKey
         }, {

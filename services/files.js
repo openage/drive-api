@@ -29,7 +29,13 @@ const getStore = context => {
 const create = async (model, context) => {
     let store = getStore(context)
 
-    let fileType = model.file.type.split('/')[0] // TODO:
+    if (model.file) {
+        model.file.name = model.file.name.trim().replace(/ /g, "_")
+        model.file.originalFilename = model.file.originalFilename.trim().replace(/ /g, "_")
+    }
+
+
+    let fileType = model.file.type.split('/')[0]
     let thumbnail = ''
 
     if (fileType === 'audio') {
@@ -80,6 +86,7 @@ const create = async (model, context) => {
     let newFile = new db.file({
         entity: entity,
         url: file.url,
+        size: model.file.size,
         thumbnail: thumbnail,
         path: file.path,
         identifier: model.identifier,
@@ -176,6 +183,10 @@ const search = async (query, context) => {
         tenant: context.tenant.id
     }
 
+    // if (context.organization) {
+    //     where.organization = context.organization
+    // }
+
     if (query.isMostViewed) {
         sortQuery = {
             views: -1
@@ -201,30 +212,6 @@ const search = async (query, context) => {
             return file
         })
         return files
-    }
-
-    if (query.isRecent) {
-        let recentFiles = await db.share.find({
-            tenant: context.tenant.id,
-            createdBy: context.user,
-            isFavourite: false
-        }).sort({ _id: -1 }).populate('file')
-
-        for (let index = 0; index < favoriteFiles.length; index++) {
-            let favoriteFile = favoriteFiles[index].file
-            let file = recentFiles.find(item => item.id === favoriteFile.id)
-            if (file) {
-                file.isFavourite = true
-            }
-        }
-
-        let retVals = []
-        recentFiles.forEach(item => {
-            if (item && item.file && item.file.id) {
-                retVals.push(item.file)
-            }
-        })
-        return retVals
     }
 
     if (query.owner) {
@@ -258,6 +245,20 @@ const search = async (query, context) => {
         where.status = {
             $ne: 'trash'
         }
+    }
+
+    if (query.isRecent) {
+        let recentFiles = await db.file.find(query).sort({ _id: -1 }).limit(10)
+
+        for (let index = 0; index < favoriteFiles.length; index++) {
+            let favoriteFile = favoriteFiles[index].file
+            let file = recentFiles.find(item => item.id === favoriteFile.id)
+            if (file) {
+                file.isFavourite = true
+            }
+        }
+
+        return recentFiles
     }
 
     let files = await db.file.find(where).sort(sortQuery).populate('entity owner folder uploadedBy')
