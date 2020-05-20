@@ -1,11 +1,12 @@
 module.exports = {
     id: 'string',
+    code: 'string',
+    name: 'string',
+
     url: 'string',
     thumbnail: 'string',
     mimeType: 'string',
 
-    name: 'string',
-    identifier: 'string',
     description: 'string',
     version: 'number',
 

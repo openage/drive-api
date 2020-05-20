@@ -4,15 +4,18 @@
         "host": "mongodb://localhost:27017/oa_drive"
     },
     "webServer": {
-        "url": "http://localhost:3003",
+        "url": "https://dev.openage.in/drive",
         "port": 3003
     },
     "queueServer": {
         "disabled": true
     },
-    "system": {
+    "support": {
         "name": "Open Age",
-        "emailId": "no_reply@openage.in"
+        "email": "support@openage.in"
+    },
+    "store": {
+        "provider": "file-store"
     },
     "auth": {
         "provider": "directory"
@@ -23,18 +26,10 @@
     "message": {
         "provider": "send-it"
     },
-    "logger": {
-        "console": {
-            "level": "silly",
-            "handleExceptions": true,
-            "json": false,
-            "colorize": true
-        }
-    },
     "providers": {
         "file-store": {
             "dir": "public/files",
-            "root": "http://localhost:3030/files"
+            "root": "https://dev.openage.in/drive/files"
         },
         "aws-s3": {
             "accessKeyId": "placeholder",
@@ -47,12 +42,30 @@
             "api_secret": "placeholder"
         },
         "directory": {
-            "url": "http://localhost:3001/api"
+            "url": "https://dev.openage.in/directory/api"
         },
         "send-it": {
-            "url": "http://localhost:3002/api"
+            "url": "https://dev.openage.in/sendIt/api"
+        },
+	"discover": {
+            "url": "https://dev.openage.in/discover/api"
         }
     },
+    "logger": {
+        "console": {
+            "level": "silly",
+            "handleExceptions": true,
+            "json": false,
+            "colorize": true
+        }
+    },
+
+    "formats": {
+        "date": "DD-MM-YYYY"
+    },
+    "organization": {
+        "timeZone": "IST"
+    }
     "api": {
         "errors": {}
     }

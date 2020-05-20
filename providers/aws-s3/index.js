@@ -2,6 +2,10 @@ const s3 = require('./s3')
 const fs = require('fs')
 const S3ReadableStream = require('s3-readable-stream')
 
+const imageHelper = require('../../helpers/image')
+const audioHelper = require('../../helpers/audio')
+var mime = require('mime-types')
+
 const uploadPart = async (partParams) => {
     var partNo = 1
     var uploaded = {
@@ -63,8 +67,25 @@ exports.config = (awsBucketConfig) => {
         }
 
         let completeUploadData = await s3.completeMultipartUpload(doneParams)
+        let url = completeUploadData.Location
 
-        return { url: completeUploadData.Location }
+        let type = file.type.split('/')[0]
+
+        let meta = {}
+
+        if (type === 'audio') {
+            meta.thumbnail = await audioHelper.meta(url)
+        } else {
+            meta.thumbnail = await imageHelper.meta(url)
+        }
+
+        return {
+            url: url,
+            thumbnail: meta.thumbnail,
+            size: file.size,
+            mimeType: mime.lookup(file.name),
+            provider: 'aws-s3'
+        }
     }
 
     const streamFile = async (params, target) => {

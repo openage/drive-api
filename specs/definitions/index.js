@@ -4,7 +4,7 @@ const changeCase = require('change-case')
 
 const definitions = {}
 
-const formDefinition = data => {
+const formDefinition = (data) => {
     let def = {}
 
     if (typeof data === 'string') {
@@ -12,19 +12,25 @@ const formDefinition = data => {
             type: data
         }
     }
-    for (var key in data) {
-        if (Array.isArray(data[key])) {
-            const arrayItem = data[key].length ? data[key][0] : {}
 
+    for (var key in data) {
+        if (key === '$description') {
+            def.description = data[key]
+        } else if (key === '$type') {
+            def.type = getType(data[key])
+        } else if (key === '$example') {
+            def.example = data[key]
+        } else if (Array.isArray(data[key])) {
+            const arrayModel = data[key].length ? data[key][0] : {}
             const itemDef = {}
-            if (Array.isArray(arrayItem)) {
+            if (Array.isArray(arrayModel)) {
                 itemDef.type = 'array'
-                itemDef.properties = formDefinition(arrayItem)
-            } else if (typeof arrayItem === 'object') {
+                itemDef.properties = formDefinition(arrayModel)
+            } else if (typeof arrayModel === 'object') {
                 itemDef.type = 'object'
-                itemDef.properties = formDefinition(arrayItem)
+                itemDef.properties = formDefinition(arrayModel)
             } else {
-                itemDef.type = arrayItem
+                itemDef.type = arrayModel
             }
 
             def[key] = {
@@ -32,18 +38,34 @@ const formDefinition = data => {
                 items: itemDef
             }
         } else if (typeof data[key] === 'object') {
-            def[key] = {
-                type: 'object',
-                properties: formDefinition(data[key])
+            if (data[key].$type) {
+                def[key] = {
+                    type: getType(data[key].$type),
+                    description: data[key].$description,
+                    example: data[key].$example
+                }
+            } else {
+                def[key] = {
+                    type: 'object',
+                    properties: formDefinition(data[key])
+                }
             }
         } else {
             def[key] = {
-                type: data[key]
+                type: getType(data[key])
             }
         }
     }
 
     return def
+}
+
+const getType = type => {
+    if (typeof type === 'function' && type.name) {
+        return type.name.toLocaleLowerCase()
+    } else {
+        return type
+    }
 }
 
 const extract = (data, name) => {
@@ -135,13 +157,22 @@ const setDefaults = (data, fileName) => {
         item.definition.type = 'object'
     }
     return item
-};
+}
+
+const fetch = (path) => {
+    var id = require.resolve(path)
+    if (require.cache[id] !== undefined) {
+        delete require.cache[id]
+    }
+
+    return require(path)
+}
 
 (function () {
     fs.readdirSync(__dirname).forEach(function (file) {
         if (file.indexOf('.js') && file.indexOf('index.js') < 0) {
             let name = file.split('.')[0]
-            let data = require('./' + file)
+            let data = fetch(`./${file}`)
             if (!data.forEach) {
                 data = extract(data, changeCase.camelCase(name))
             }

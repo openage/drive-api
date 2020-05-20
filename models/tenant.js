@@ -1,15 +1,18 @@
-'use strict'
 const mongoose = require('mongoose')
-
 module.exports = {
-    code: String,
+    code: { type: String, lowercase: true },
     name: String,
-    config: Object,
     logo: {
         url: String,
         thumbnail: String
     },
+    config: Object,
     store: {
+        provider: String,
+        config: Object
+    },
+
+    sign: {
         provider: String,
         config: Object
     },
@@ -17,6 +20,12 @@ module.exports = {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'user'
     },
+    services: [{
+        logo: String,
+        code: String,
+        name: String,
+        url: String // api root url
+    }],
     status: {
         type: String,
         default: 'active',

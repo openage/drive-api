@@ -1,77 +1,82 @@
-exports.toModel = function (entity) {
+const userMapper = require('./user')
+const fileMapper = require('./file')
+
+exports.toModel = function (entity, context) {
+    if (!entity) {
+        return
+    }
+
+    if (!entity.isPublic && !context.user) {
+        throw new Error('ACCESS_DENIED')
+    }
+
+    if (entity._bsontype === 'ObjectId') {
+        return {
+            id: entity.toString()
+        }
+    }
+
     let model = {
         id: entity.id,
-        thumbnail: entity.thumbnail,
+        code: entity.code,
         name: entity.name,
         description: entity.description,
+        thumbnail: entity.thumbnail,
         isPublic: entity.isPublic,
+        parent: this.toSummary(entity.parent, context),
         files: [],
         folders: []
     }
 
-    if (entity.parent) {
-        model.parent = entity.parent._doc ? {
-            id: entity.parent.id,
-            thumbnail: entity.parent.thumbnail,
-            name: entity.parent.name,
-            isPublic: entity.parent.isPublic
-        } : { id: entity.parent.toString() }
-    }
+    if (!context.user) {
+        if (entity.folders && entity.folders.length) {
+            model.folders = entity.folders.map(f => {
+                if (!f.isPublic) { return null }
+                return this.toSummary(f, context)
+            })
+        }
 
-    if (entity.owner && entity.owner._doc) {
-        model.owner = {
-            id: entity.owner.id,
-            profile: {
-                firstName: entity.owner.profile.firstName,
-                lastName: entity.owner.profile.lastName,
-                pic: {
-                    url: entity.owner.profile.pic.url,
-                    thumbnail: entity.owner.profile.pic.thumbnail
-                }
-            }
+        if (entity.files && entity.files.length) {
+            model.files = entity.files.map(f => {
+                if (!f.isPublic) { return null }
+                return fileMapper.toSummary(f, context)
+            })
         }
-    } else {
-        model.owner = {
-            id: entity.owner.toString()
-        }
+        return model
     }
 
     if (entity.folders && entity.folders.length) {
-        entity.folders.forEach(folder => {
-            model.folders.push({
-                id: folder.id,
-                thumbnail: folder.thumbnail,
-                name: folder.name,
-                description: folder.description,
-                isPublic: folder.isPublic
-            })
-        })
+        model.folders = entity.folders.map(f => this.toSummary(f, context))
     }
 
     if (entity.files && entity.files.length) {
-        entity.files.forEach(file => {
-            model.files.push({
-                id: file.id,
-                url: file.url,
-                thumbnail: file.thumbnail,
-                mimeType: file.mimeType,
-
-                name: file.name,
-                description: file.description,
-                version: file.version,
-
-                isTemplate: file.isTemplate,
-                isVirtual: file.isVirtual,
-                isPublic: file.isPublic
-            })
-        })
+        model.files = entity.files.map(f => fileMapper.toSummary(f, context))
     }
+
+    model.status = entity.status
+    model.meta = entity.meta
+    model.owner = userMapper.toSummary(entity.owner, context)
 
     return model
 }
 
-exports.toSearchModel = (entities) => {
-    return entities.map(entity => {
-        return exports.toModel(entity)
-    })
+exports.toSummary = (entity, context) => {
+    if (!entity) {
+        return
+    }
+
+    if (entity._bsontype === 'ObjectId') {
+        return {
+            id: entity.toString()
+        }
+    }
+
+    return {
+        id: entity.id,
+        code: entity.code,
+        name: entity.name,
+        description: entity.description,
+        thumbnail: entity.thumbnail,
+        isPublic: entity.isPublic
+    }
 }

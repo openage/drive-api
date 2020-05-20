@@ -1,4 +1,5 @@
 'use strict'
+
 const webServer = require('config').webServer
 
 var about = require('../package.json')
@@ -9,11 +10,9 @@ const spec = {
         version: about.version,
         title: about.name
     },
-    host: webServer.rootUrl,
+    host: webServer.url.replace(/(^\w+:|^)\/\//, ''),
     basePath: '/api',
-    schemes: [
-        'http'
-    ],
+    schemes: [],
     consumes: [
         'application/json'
     ],
@@ -25,7 +24,21 @@ const spec = {
 }
 
 exports.get = () => {
+    purge('./definitions')
+    purge('./paths')
+
     spec.definitions = require('./definitions')
-    spec.paths = require('./paths')
+    spec.paths = require('./paths').paths()
     return spec
+}
+
+exports.routes = () => {
+    return require('./paths').routes()
+}
+
+const purge = (path) => {
+    var id = require.resolve(path)
+    if (require.cache[id] !== undefined) {
+        delete require.cache[id]
+    }
 }

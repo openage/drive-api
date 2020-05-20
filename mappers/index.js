@@ -1,12 +1,10 @@
 'use strict'
 const fs = require('fs')
 const changeCase = require('change-case')
-
-var mappers = {}
-
+const mappers = {}
 const init = function () {
     fs.readdirSync(__dirname).forEach(function (file) {
-        if (file.indexOf('.js') && file.indexOf('index.js') < 0) {
+        if (file.indexOf('.js') !== -1 && file.indexOf('index.js') < 0) {
             var mapper = require('./' + file)
 
             var name = file.substring(0, file.indexOf('.js'))

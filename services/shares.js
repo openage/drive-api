@@ -1,72 +1,120 @@
 'use strict'
 
 const db = require('../models')
+const users = require('./users')
+const offline = require('@open-age/offline-processor')
 
-const create = async (data, context) => {
+const populate = 'user file folder createdBy'
+
+const set = async (model, entity, context) => {
+    if (model.expires) {
+        entity.expires = model.expires
+    }
+
+    if (model.role) {
+        entity.role = model.role
+    }
+
+    if (model.isFavourite !== undefined) {
+        entity.isFavourite = model.isFavourite
+    }
+}
+
+exports.create = async (data, context) => {
     let log = context.logger.start('services/shares:create')
 
-    if (!data.date) {
-        data.date = new Date()
+    let entity = await this.get(data, context)
+
+    if (!entity) {
+        entity = new db.share({
+            date: new Date(),
+            file: data.file,
+            folder: data.folder,
+            user: await users.get(data.user, context),
+            createdBy: context.user,
+            tenant: context.tenant
+        })
     }
 
-    if (!data.tenant) {
-        data.tenant = context.tenant
-    }
+    await set(data, entity, context)
 
-    let share = new db.share(data).save()
+    await entity.save()
+
+    await offline.queue('share', 'create', entity, context)
 
     log.end()
-    return share
+    return entity
 }
 
-const get = async (query, context) => {
-    let log = context.logger.start('services/shares:get')
+exports.update = async (data, context) => {
+    let log = context.logger.start('services/shares:create')
 
-    let shares = await db.share.find(query).populate('file folder')
+    let entity = await this.get(data, context)
+
+    await set(data, entity, context)
+
+    await entity.save()
+
+    await offline.queue('share', 'update', entity, context)
 
     log.end()
-    return shares
+    return entity
 }
 
-const getOne = async (query, context) => {
-    let log = context.logger.start('services/shares:getOne')
+exports.get = async (query, context) => {
+    context.logger.start('services/shares:get')
 
-    let share = await db.share.findOne(query).populate('file folder')
+    if (typeof query === 'string' && query.isObjectId()) {
+        return db.share.findById(query).populate(populate)
+    }
 
-    log.end()
-    return share
+    if (query.user && (query.file || query.folder)) {
+        let where = {
+            user: await users.get(query.user, context),
+            tenant: context.tenant
+        }
+
+        if (query.folder) {
+            where.folder = query.folder
+        }
+
+        if (query.file) {
+            where.file = query.file
+        }
+        return db.share.find(where).populate(populate)
+    }
 }
 
-const getOrCreate = async (model, context) => {
-    let log = context.logger.start('services/shares:createFavorite')
+exports.search = async (query, paging, context) => {
+    context.logger.start('services/shares:search')
 
-    let query = {
-        createdBy: model.createdBy || context.user
+    if (typeof query === 'string' && query.isObjectId()) {
+        return db.share.findById(query).populate(populate)
     }
 
-    if (model.folder) {
-        query.folder = model.folder
+    let where = {
+        tenant: context.tenant
     }
 
-    if (model.file) {
-        query.file = model.file
+    if (query.user) {
+        where.user = await users.get(query.user, context)
+    } else {
+        where.user = context.user
     }
 
-    if (model.isFavourite) {
-        query.isFavourite = model.isFavourite
+    if (query.isFavourite !== undefined) {
+        where.isFavourite = query.isFavourite
     }
 
-    let share = await db.share.findOne(query)
-
-    if (!share) {
-        share = await create(model, context)
+    if (query.folder) {
+        where.folder = query.folder
     }
 
-    log.end()
-    return share
+    if (query.file) {
+        where.file = query.file
+    }
+
+    return {
+        items: await db.share.find(where).populate(populate)
+    }
 }
-
-exports.create = create
-exports.get = get
-exports.getOne = getOne
-exports.getOrCreate = getOrCreate

@@ -26,7 +26,7 @@ module.exports = {
     files: [file],
 
     owner: user,
-    uploadedBy: user,
+    creator: user,
     sharedWith: [{
         role: 'string',
         expires: 'date',

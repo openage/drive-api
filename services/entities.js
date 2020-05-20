@@ -10,7 +10,7 @@ exports.get = async (query, context) => {
         entity = await db.entity.findOne({
             entityId: query.id,
             entityType: query.type,
-            tenant: context.tenant.id
+            tenant: context.tenant
         })
 
         if (!entity) {

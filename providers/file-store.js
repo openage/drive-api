@@ -4,6 +4,10 @@ const uuid = require('uuid/v1')
 
 const path = require('path')
 
+const imageHelper = require('../helpers/image')
+const audioHelper = require('../helpers/audio')
+var mime = require('mime-types')
+
 const move = async (oldPath, newPath) => {
     const copy = (cb) => {
         var readStream = fs.createReadStream(oldPath)
@@ -45,7 +49,7 @@ const store = async (file, config) => {
 
     let parts = file.name.split('.')
 
-    let name = parts[0].trim().replace(/ /g, "_")
+    let name = parts[0].replace(/[^A-Z0-9]/ig, '')
     let ext = parts[1]
 
     let destDir = config.dir.startsWith('/') ? config.dir : path.join(appRoot.path, config.dir)
@@ -57,7 +61,24 @@ const store = async (file, config) => {
 
     await move(file.path, destination)
 
-    return { url: url, path: destination }
+    let fileType = file.type.split('/')[0]
+
+    let meta = {}
+
+    if (fileType === 'audio') {
+        meta.thumbnail = await audioHelper.meta(destination)
+    } else {
+        meta.thumbnail = await imageHelper.meta(destination)
+    }
+
+    return {
+        url: url,
+        path: destination,
+        thumbnail: meta.thumbnail,
+        size: file.size,
+        mimeType: mime.lookup(fileName),
+        provider: 'file-store'
+    }
 }
 
 exports.config = (config) => {

@@ -5,13 +5,13 @@ let organization = require('./organizations')
 
 module.exports = {
     id: 'string',
+    code: 'string',
+    name: 'string',
 
     url: 'string',
     thumbnail: 'string',
     mimeType: 'string',
 
-    name: 'string',
-    identifier: 'string',
     description: 'string',
     version: 'number',
 
@@ -24,7 +24,7 @@ module.exports = {
     folder: folder,
 
     owner: user,
-    uploadedBy: user,
+    creator: user,
 
     organization: organization,
     tenant: tenant
