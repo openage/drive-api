@@ -61,6 +61,5 @@ module.exports.configure = (app, logger) => {
         permissions: 'tenant.user'
     }])
 
-
     logger.end()
 }

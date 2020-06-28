@@ -40,6 +40,24 @@ const signatureMapper = (entity, context) => {
     return model
 }
 
+const viewerMapper = (entity, context) => {
+    if (!entity) {
+        return
+    }
+    let model = {
+        views: entity.views || 0,
+        timeStamp: entity.timeStamp,
+        lastView: entity.lastView,
+        user: userMapper.toSummary(entity.user, context)
+    }
+
+    return model
+}
+
+const getMyView = (viewers, context) => {
+    return viewers.find(v => v.user && context && context.user && v.user.id === context.user.id)
+}
+
 exports.toModel = function (entity, context) {
     if (!entity) {
         return
@@ -64,12 +82,26 @@ exports.toModel = function (entity, context) {
         views: entity.views || 0,
         timeStamp: entity.timeStamp,
         tags: entity.tags,
+        isEnabled: entity.isEnabled,
+        isPlaceholder: entity.isPlaceholder,
+        isRequired: entity.isRequired,
+        orderNo: entity.orderNo,
         creator: userMapper.toSummary(entity.creator, context),
         viewer: entity.viewer,
         url: entity.url, // deprecated
         thumbnail: entity.thumbnail, // deprecated
         mimeType: entity.mimeType, // deprecated
         size: entity.size // deprecated
+    }
+
+    if (entity.viewers && entity.viewers.length) {
+        model.viewers = entity.viewers.map(f => viewerMapper(f, context))
+        if (context.user) {
+            let view = getMyView(model.viewers, context)
+            if (view) {
+                model.view = view
+            }
+        }
     }
 
     if (entity.folder) {
@@ -119,12 +151,14 @@ exports.toModel = function (entity, context) {
     }
 
     if (entity.previous) {
-        model.previous = {
-            version: entity.previous.version,
-            url: entity.previous.url,
-            timeStamp: entity.previous.timeStamp,
-            creator: userMapper.toSummary(entity.previous.creator, context)
+        if (entity.previous.file) {
+            model.previous = this.toModel(entity.previous.file, context)
         }
+        if (!model.previous) {
+            model.previous = {}
+        }
+        model.previous.timeStamp = entity.previous.timeStamp
+        model.previous.creator = userMapper.toSummary(entity.previous.creator, context)
     }
 
     return model
@@ -146,12 +180,28 @@ exports.toSummary = (entity, context) => {
         code: entity.code,
         name: entity.name,
         description: entity.description,
+        timeStamp: entity.timeStamp,
         version: entity.version,
         tags: entity.tags,
+        isEnabled: entity.isEnabled,
+        isPlaceholder: entity.isPlaceholder,
+        isRequired: entity.isRequired,
         url: entity.url, // deprecated
         thumbnail: entity.thumbnail, // deprecated
         mimeType: entity.mimeType, // deprecated
-        size: entity.size // deprecated
+        size: entity.size, // deprecated
+        meta: entity.meta,
+        orderNo: entity.orderNo
+    }
+
+    if (entity.viewers && entity.viewers.length) {
+        model.viewers = entity.viewers.map(f => viewerMapper(f, context))
+        if (context.user) {
+            let view = getMyView(model.viewers, context)
+            if (view) {
+                model.view = view
+            }
+        }
     }
 
     if (entity.content) {
@@ -163,6 +213,10 @@ exports.toSummary = (entity, context) => {
         model.size = entity.content.size
         model.thumbnail = entity.content.thumbnail
         model.mimeType = entity.content.mimeType
+    }
+
+    if (entity.creator) {
+        model.creator = userMapper.toSummary(entity.creator, context)
     }
 
     if (!context.user) {

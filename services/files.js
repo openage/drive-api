@@ -17,7 +17,64 @@ const offline = require('@open-age/offline-processor')
 
 const webServer = require('config').webServer
 
-const populate = 'entity owner folder creator'
+const populate = 'entity owner folder creator previous.file previous.creator viewers.user'
+
+const getIndex = (array, user) => {
+    let index
+    let i = 0
+    for (const item of array) {
+        if (item.user.id == user.id) {
+            index = i
+        }
+        i++
+    }
+    return index
+}
+
+const markLastView = (lastView, file, user) => {
+    if (file.viewers && file.viewers.length) {
+        let index = getIndex(file.viewers, user)
+        if (index >= 0) {
+            file.viewers[index].lastView = Number(lastView)
+        } else {
+            file.viewers.push({
+                lastView: Number(lastView),
+                views: 1,
+                timeStamp: new Date(),
+                user: user
+            })
+        }
+    } else {
+        file.viewers = [{
+            lastView: Number(lastView),
+            views: 1,
+            timeStamp: new Date(),
+            user: user
+        }]
+    }
+}
+
+const marViewed = async (file, user) => {
+    if (file.viewers && file.viewers.length) {
+        let index = getIndex(file.viewers, user)
+        if (index >= 0) {
+            file.viewers[index].views = ++file.viewers[index].views
+        } else {
+            file.viewers.push({
+                views: 1,
+                timeStamp: new Date(),
+                user: user
+            })
+        }
+    } else {
+        file.viewers = [{
+            views: 1,
+            timeStamp: new Date(),
+            user: user
+        }]
+    }
+    file.save()
+}
 
 const set = async (model, entity, context) => {
     if (model.code && model.code !== entity.code) {
@@ -36,8 +93,8 @@ const set = async (model, entity, context) => {
         entity.name = model.name
     }
 
-    if (model.mimeType) {
-        entity.mimeType = model.mimeType
+    if (model.orderNo) {
+        entity.orderNo = Number(model.orderNo)
     }
 
     if (model.description) {
@@ -62,8 +119,20 @@ const set = async (model, entity, context) => {
         entity.isPublic = model.isPublic
     }
 
+    if (model.isEnabled !== undefined) {
+        entity.isEnabled = model.isEnabled
+    }
+
     if (model.isVirtual !== undefined) {
         entity.isVirtual = model.isVirtual
+    }
+
+    if (model.isRequired !== undefined) {
+        entity.isRequired = model.isRequired
+    }
+
+    if (model.isPlaceholder !== undefined) {
+        entity.isPlaceholder = model.isPlaceholder
     }
 
     if (model.isTemplate !== undefined) {
@@ -79,6 +148,9 @@ const set = async (model, entity, context) => {
     }
 
     if (model.tags) {
+        if (!Array.isArray(model.tags)) {
+            model.tags = model.tags.split(',')
+        }
         entity.tags = model.tags
     }
 
@@ -86,21 +158,52 @@ const set = async (model, entity, context) => {
         entity.viewer = model.viewer
     }
 
+    if (model.lastView) {
+        markLastView(model.lastView, entity, context.user)
+    }
+
     if (model.url) {
-        entity.url = model.url
+        entity.content = entity.content || {}
+        entity.content.url = model.url
     }
 
     if (model.thumbnail) {
-        entity.thumbnail = model.thumbnail
+        entity.content = entity.content || {}
+        entity.content.thumbnail = model.thumbnail
+    }
+
+    if (model.mimeType) {
+        entity.content = entity.content || {}
+        entity.content.mimeType = model.mimeType
     }
 
     if (model.meta) {
-        entity.meta = model.meta
+        entity.meta = entity.meta || {}
+        Object.getOwnPropertyNames(model.meta).forEach(key => {
+            entity.meta[key] = model.meta[key]
+        })
+        entity.markModified('meta')
     }
 
-    if (model.content) {
-        let content = await saveContent(model.content, context)
-        entity.content = content
+    if (model.content !== undefined) {
+        if(model.content === null) {
+            entity.content = {
+                body: undefined,
+                template: entity.template,
+                path: undefined,
+                provider: undefined, 
+                url: entity.url,
+                mimeType: undefined,
+                thumbnail: undefined,
+                size: 0
+            }
+        } else {
+            let content = await saveContent(model.content, context)
+            entity.content = content
+            if (model.version && entity.status === 'active') {
+                entity.version = model.version
+            }
+        }
     }
 
     if (model.hooks) {
@@ -169,11 +272,15 @@ const getUrl = (code, id, ext, context) => {
     return `${webServer.url}/api/docs/${code}/${id}.${ext}?role-key=${context.user.role.key}`
 }
 const getStore = context => {
+    let log = context.logger.start('services/files:getStore')
     if (context.organization && context.organization.store && context.organization.store.provider) {
+        log.debug(`store: ${context.organization.store.provider}`)
         return context.organization.store
     } else if (context.tenant && context.tenant.store && context.tenant.store.provider) {
+        log.debug(`store: ${context.tenant.store.provider}`)
         return context.tenant.store
     } else {
+        log.debug(`store: ${storeConfig.provider}`)
         return {
             provider: storeConfig.provider,
             config: config.get(`providers.${storeConfig.provider}`)
@@ -184,40 +291,57 @@ const getStore = context => {
 const saveContent = async (model, context) => {
     let entity = {}
 
+    let log = context.logger.start('services/files:saveContent')
+
+    log.silly(model)
     if (typeof model === 'string') {
         let store = {
             provider: 'html-store'
         }
+        log.debug(`saving html with ${store.provider}`)
+
         let provider = require(`../providers/${store.provider}`)
         entity = await provider.config(store.config).store(model)
-    } else if (model.body) {
+    } else if (model.json) {
+        let store = {
+            provider: 'json-store'
+        }
+        log.debug(`saving json with ${store.provider}`)
+
+        let provider = require(`../providers/${store.provider}`)
+        entity = await provider.config(store.config).store(model.json)
+    } else if (model.body || model.html) {
         let store = {
             provider: 'html-store'
         }
+        log.debug(`saving html with ${store.provider}`)
+
         let provider = require(`../providers/${store.provider}`)
-        entity = await provider.config(store.config).store(model.body)
+        entity = await provider.config(store.config).store(model.body || model.html)
     } else if (model.file) {
         model.file.name = model.file.name.trim().replace(/ /g, '-')
         model.file.originalFilename = model.file.originalFilename.trim().replace(/ /g, '-')
 
         let store = getStore(context)
+        log.debug(`saving file:${model.file} with ${store.provider}`)
         let provider = require(`../providers/${store.provider}`)
         entity = await provider.config(store.config).store(model.file)
     } else if (model.url) {
+        log.debug(`saving url: ${model.url}`)
+
         entity = {
             url: model.content.url
         }
+    } else {
+        log.error(`could not determine the provider`)
     }
+
+    log.end()
 
     return entity
 }
 
 exports.create = async (model, context) => {
-    // let file
-    // let fileType
-
-    // let content = {}
-
     if (!model.folder) {
         model.folder = {
             code: 'root',
@@ -225,6 +349,10 @@ exports.create = async (model, context) => {
             owner: model.owner || context.owner,
             isPublic: model.isPublic
         }
+    }
+
+    if (model.template) {
+        model = await fileTemplate.build(model, model.meta, context)
     }
 
     if (!model.name) {
@@ -247,14 +375,25 @@ exports.create = async (model, context) => {
         throw new Error('name or code is required')
     }
 
-    if (model.template) {
-        model = await fileTemplate.build(model, model.meta, context)
-    }
-
     let existing = await this.get(model, context)
 
     if (existing && existing.status !== 'trash' && (model.overwrite === 'false' || model.overwrite === false)) {
         throw new Error('Already Exist')
+    }
+
+    if (existing ) {
+        // copy over attributes from previous version
+        if(!model.meta) {
+            model.meta = existing.meta
+        }
+
+        if(model.isPlaceholder === undefined) {
+            model.isPlaceholder = existing.isPlaceholder
+        }
+
+        if(model.isRequired === undefined) {
+            model.isRequired = existing.isRequired
+        }
     }
 
     let entity = new db.file({
@@ -263,7 +402,9 @@ exports.create = async (model, context) => {
         owner: context.user,
         creator: context.user,
         organization: context.organization,
-        tenant: context.tenant
+        tenant: context.tenant,
+        isEnabled: true,
+        timeStamp: new Date()
     })
 
     await set(model, entity, context)
@@ -326,7 +467,7 @@ exports.create = async (model, context) => {
 
     // if (existingFiles && existingFiles.length) {
     //     for (let fileItem of existingFiles) {
-    //         if (fileItem.name == newFile.name) {
+    //         if (fileItem.name === newFile.name) {
     //             version = fileItem.version
     //             previous = {
     //                 version: fileItem.version,
@@ -385,7 +526,9 @@ exports.create = async (model, context) => {
 // }
 
 exports.emptyTrash = async (context) => {
-    let trash = await this.search({ status: 'trash' }, null, context)
+    let trash = await this.search({
+        status: 'trash'
+    }, null, context)
 
     let count = trash.count
     for (const item of trash.items) {
@@ -399,20 +542,46 @@ exports.remove = async (id, context) => {
     if (id === 'trash') {
         return this.emptyTrash(context)
     }
-    let entity = await this.get(id, context)
+    let entity
+    if (id.isObjectId()) {
+        entity = await this.get({
+            id: id
+        }, context, false)
+    } else {
+        entity = await this.get(id, context, false)
+    }
+    if (!entity) {
+        return
+    }
+
+    if (entity.isPlaceholder) {
+        return this.flush(id, context)
+    }
+
     entity.status = 'trash'
     await entity.save()
     await offline.queue('file', 'trash', entity, context)
 }
 
-exports.get = async (query, context) => {
+exports.flush = async (id, context) =>{
+    return this.update(id,  {
+        content: null
+    }, context)
+}
+
+exports.get = async (query, context, markViewed = true) => {
+    let file
+
     if (typeof query === 'string') {
         if (query.isObjectId()) {
-            return db.file.findById(query).populate(populate)
+            file = await db.file.findById(query).populate(populate)
+            if (file) { return file }
         }
         let where = {
             code: query.toLowerCase(),
-            status: { $ne: 'trash' },
+            status: {
+                $ne: 'trash'
+            },
             tenant: context.tenant
         }
         if (context.user) {
@@ -426,64 +595,77 @@ exports.get = async (query, context) => {
             where.organization = context.organization
         }
 
-        return db.file.findOne(where).populate(populate)
+        file = await db.file.findOne(where).populate(populate)
     }
 
     if (query.id) {
-        return db.file.findById(query.id).populate(populate)
+        file = await db.file.findById(query.id).populate(populate)
     }
 
     if (query.trackingId) {
-        return db.file.findOne({
+        file = await db.file.findOne({
             trackingId: query.trackingId
         }).populate(populate)
     }
 
     if (query['signature.trackingId']) {
-        return db.file.findOne({
+        file = await db.file.findOne({
             'signature.trackingId': query['signature.trackingId']
         }).populate(populate)
     }
 
-    if (!query.code || !(query.folder || query.entity)) {
+    if ((!query.code || !(query.folder || query.entity)) && !file) {
         return
     }
 
-    let where = {
-        code: query.code.toLowerCase(),
-        status: { $ne: 'trash' },
-        tenant: context.tenant
+    if (!file) {
+        let where = {
+            code: query.code.trim().toLowerCase().replace(' ', '-'),
+            status: {
+                $ne: 'trash'
+            },
+            tenant: context.tenant
+        }
+
+        if (!context.user) {
+            where.isPublic = true
+        }
+
+        if (query.folder) {
+            where.folder = await folders.get(query.folder, context)
+        }
+
+        if (query.entity) {
+            where.entity = await entities.get(query.entity, context)
+        }
+
+        if (query.owner) {
+            where.owner = await users.get(query.owner, context)
+        }
+
+        if (query.version) {
+            where.version = query.version
+        }
+
+        if (where.isPublic && !(where.entity || where.owner)) {
+            throw new Error('INVALID_REQUEST')
+        }
+
+        if (!where.isPublic && !(where.entity || where.owner)) {
+            where.owner = context.user
+        }
+
+        context.logger.debug('where')
+        context.logger.debug(where)
+
+        file = await db.file.findOne(where).populate(populate)
     }
 
-    if (!context.user) {
-        where.isPublic = true
+    if (file && markViewed) {
+        marViewed(file, context.user)
     }
 
-    if (query.folder) {
-        where.folder = await folders.get(query.folder, context)
-    }
-
-    if (query.entity) {
-        where.entity = await entities.get(query.entity, context)
-    }
-
-    if (query.owner) {
-        where.owner = await users.get(query.owner, context)
-    }
-
-    if (query.version) {
-        where.version = query.version
-    }
-
-    if (where.isPublic && !(where.entity || where.owner)) {
-        throw new Error('INVALID_REQUEST')
-    }
-
-    if (!where.isPublic && !(where.entity || where.owner)) {
-        where.owner = context.user
-    }
-
-    return db.file.findOne(where).populate(populate)
+    return file
 }
 
 exports.search = async (query, paging, context) => {
@@ -505,12 +687,14 @@ exports.search = async (query, paging, context) => {
         }
     }
 
-    let sorting = 'name'
+    let sorting = 'recent'
     if (paging && paging.sort) {
         sorting = paging.sort
     }
 
-    let sort = {}
+    let sort = {
+        orderNo: -1
+    }
 
     switch (sorting) {
         case 'recent':
@@ -542,6 +726,10 @@ exports.search = async (query, paging, context) => {
 
     if (query.isPublic !== undefined) {
         where.isPublic = !!(query.isPublic === 'true' || query.isPublic === true)
+    }
+
+    if (query.isEnabled !== undefined) {
+        where.isEnabled = !!(query.isEnabled === 'true' || query.isEnabled === true)
     }
 
     if (query.entityOrganization) { // TODO: obsolete
@@ -594,6 +782,10 @@ exports.search = async (query, paging, context) => {
         }
     }
 
+    if (query.code) {
+        where.code = query.code
+    }
+
     if (query.status) {
         where.status = query.status
     } else {
@@ -602,9 +794,9 @@ exports.search = async (query, paging, context) => {
         }
     }
 
-    if (where.isPublic && !(where.entity || where.owner)) {
-        throw new Error('INVALID_REQUEST')
-    }
+    // if (where.isPublic && !(where.entity || where.owner)) {
+    //     throw new Error('INVALID_REQUEST')
+    // }
 
     if (!where.isPublic && !(where.entity || where.owner)) {
         where.owner = context.user
@@ -679,7 +871,7 @@ exports.search = async (query, paging, context) => {
 exports.update = async (id, model, context) => {
     let log = context.logger.start('services/files:update')
 
-    let entity = await this.get(id, context)
+    let entity = await this.get(id, context, false)
 
     let status = entity.status
 
@@ -693,7 +885,7 @@ exports.update = async (id, model, context) => {
             createdBy: context.user
         }, context)
     } else if ((model.isFavourite === false) || (model.isFavourite === 'false')) {
-        let share = await shareService.getOne({
+        let share = await shareService.get({
             file: entity,
             isFavourite: true,
             createdBy: context.user

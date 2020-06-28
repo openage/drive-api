@@ -6,33 +6,57 @@ const api = require('./api-base')('folders', 'folder')
 const requestHelper = require('../helpers/paging')
 
 api.get = async (req) => {
+    let owner
     let entity
+    let folder
+    let isPublic
+
+    if (!req.context.user) {
+        isPublic = true
+    }
+
     if (req.params.id.isObjectId()) {
-        entity = await service.get(req.params.id, req.context)
+        folder = await service.get(req.params.id, req.context)
     } else {
         const query = requestHelper.query(req)
+        if (query.isPublic !== undefined) {
+            isPublic = query.isPublic
+        }
+        owner = req.body.owner || query.owner
+        entity = req.body.entity || query.entity
         let model = {
             code: req.params.id,
-            entity: req.body.entity || query.entity,
-            owner: req.body.owner || query.owner,
+            entity: entity,
+            owner: owner,
+            isPublic: isPublic,
             parent: req.body.parent || query.parent
         }
 
-        entity = await service.get(model, req.context)
+        folder = await service.get(model, req.context)
 
-        if (!entity && model.code) {
-            entity = await service.create(model, req.context)
+        if (!folder && model.code) {
+            folder = await service.create(model, req.context)
         }
     }
 
-    if (!entity) {
+    if (!folder) {
         throw new Error(`RESOURCE_NOT_FOUND`)
     }
 
-    entity.folders = await service.search({ parent: entity }, null, req.context)
-    entity.files = await files.search({ folder: entity }, null, req.context)
+    folder.folders = (await service.search({
+        parent: folder,
+        entity: entity,
+        owner: owner,
+        isPublic: isPublic
+    }, null, req.context)).items
+    folder.files = (await files.search({
+        folder: folder,
+        entity: entity,
+        isPublic: isPublic,
+        owner: owner
+    }, null, req.context)).items
 
-    return mapper.toModel(entity, req.context)
+    return mapper.toModel(folder, req.context)
 }
 
 api.bulkRemove = async (req) => {

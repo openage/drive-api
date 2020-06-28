@@ -1,13 +1,45 @@
-const fs = require('fs')
-const appRoot = require('app-root-path')
-const uuid = require('uuid/v1')
-
+const Cloud = require('@google-cloud/storage')
 const path = require('path')
+const serviceKey = require('config').get('google-cloud')
+// const serviceKey = path.join(__dirname, './keys.json')
+const appRoot = require('app-root-path')
+const fs = require('fs')
+
+const { Storage } = Cloud
+
+const storage = new Storage({
+    credentials: serviceKey,
+    projectId: 'telepain-md-stage',
+})
 
 const imageHelper = require('../helpers/image')
 const audioHelper = require('../helpers/audio')
 const videoHelper = require('../helpers/video')
 var mime = require('mime-types')
+
+const util = require('util')
+// const gc = require('./config/')
+// should be your bucket name
+
+/**
+ *
+ * @param { File } object file object that will be uploaded
+ * @description - This function does the following
+ * - It uploads a file to the image bucket on Google Cloud
+ * - It accepts an object as an argument with the
+ *   "originalname" and "buffer" as keys
+ */
+
+const uploadImage = (file, config) => new Promise((resolve, reject) => {
+    const bucket = storage.bucket(config.bucket)
+
+    const fileName = path.basename(file.path);
+    const cloudFile = bucket.file(fileName);
+
+    bucket.upload(file.path, {})
+        .then(() => cloudFile.makePublic())
+        .then(() => { resolve(`https://storage.googleapis.com/${bucket.name}/${fileName}`) });
+})
 
 const move = async (oldPath, newPath) => {
     const copy = (cb) => {
@@ -48,42 +80,31 @@ const move = async (oldPath, newPath) => {
 const store = async (file, config) => {
     config = config || require('config').get('providers.file-store')
 
-    let parts = file.name.split('.')
-
-    let name = parts[0].replace(/[^A-Z0-9]/ig, '')
-    let ext = parts[1]
-
     let destDir = config.dir.startsWith('/') ? config.dir : path.join(appRoot.path, config.dir)
 
-    let fileName = `${name}-${uuid()}.${ext}`
-
-    let destination = `${destDir}/${fileName}`
-    let url = `${config.root}/${fileName}`
-
-    await move(file.path, destination)
+    let url = await uploadImage(file, config)
 
     let fileType = file.type.split('/')[0]
 
     let meta = {}
 
     if (fileType === 'audio') {
-        meta.thumbnail = await audioHelper.meta(destination)
+        meta.thumbnail = await audioHelper.meta(file.path)
     } else if (fileType === 'video') {
-        let thumbnail = await videoHelper.meta(destination, file.timemark || 0)
+        let thumbnail = await videoHelper.meta(file.path, file.timemark || 0)
         let thumbnailDestination = `${destDir}/${thumbnail}`
         await move(`temp/${thumbnail}`, thumbnailDestination)
         meta.thumbnail = `${config.root}/${thumbnail}`
     } else {
-        meta.thumbnail = await imageHelper.meta(destination)
+        meta.thumbnail = await imageHelper.meta(file.path)
     }
 
     return {
         url: url,
-        path: destination,
         thumbnail: meta.thumbnail || file.thumbnail,
         size: file.size,
-        mimeType: mime.lookup(fileName),
-        provider: 'file-store'
+        mimeType: mime.lookup(file.name),
+        provider: 'google-cloud'
     }
 }
 

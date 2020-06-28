@@ -3,11 +3,11 @@ let db = require('../models')
 let users = require('./users')
 const entities = require('./entities')
 const shareService = require('./shares')
-
+const folderTemplateService = require('./folder-templates')
+const folderTemplateMapper = require('./../mappers/folder-template')
+const fileService = require('./files')
 const offline = require('@open-age/offline-processor')
-
 const rootCode = 'root'
-
 const populate = 'owner parent'
 
 const set = async (model, entity, context) => {
@@ -19,7 +19,7 @@ const set = async (model, entity, context) => {
         model.code = model.code.trim().toLowerCase().replace(' ', '-')
 
         // code needs to some thing like
-        // parent-2|parent-1|folder
+        // root|parent-2|parent-1|folder
 
         let parentCode = ''
 
@@ -45,7 +45,11 @@ const set = async (model, entity, context) => {
         entity.description = model.description
     }
 
-    if (model.status && entity.status != model.status) {
+    if (model.thumbnail) {
+        entity.thumbnail = model.thumbnail
+    }
+
+    if (model.status && entity.status !== model.status) {
         if (entity.status === 'trash' && model.status === 'active') {
             // take out all the files from trash
             await db.file.update({ folder: entity.id }, {
@@ -64,7 +68,7 @@ const set = async (model, entity, context) => {
     if (model.owner) {
         entity.owner = await users.get(model.owner, context)
     } else {
-        if (model.isPublic == undefined || model.isPublic == null) {
+        if (model.isPublic === undefined || model.isPublic === null) {
             entity.isPublic = true
         } else {
             entity.isPublic = model.isPublic
@@ -81,35 +85,68 @@ const set = async (model, entity, context) => {
     }
 
     if (model.meta) {
-        entity.meta = model.meta
+        entity.meta = entity.meta || {}
+        Object.getOwnPropertyNames(model.meta).forEach(key => {
+            entity.meta[key] = model.meta[key]
+        })
+        entity.markModified('meta')
     }
 }
 
 exports.create = async (model, context) => {
     let log = context.logger.start('services:folders:create')
 
+    if (model.template) {
+        let template = await folderTemplateService.get(model.template || { code: model.code }, context)
+
+        if (!template) {
+            throw new Error('INVALID_TEMPLATE')
+        }
+        model = await folderTemplateService.build(template, model, model.meta, template)
+    }
+
+    // set folder code and parent
     if (!model.code) {
         model.code = rootCode
-    }
-
-    if (!model.name) {
-        model.name = model.code
-    }
-
-    if (!model.parent && model.code !== rootCode) {
-        model.parent = {
-            code: rootCode
-        }
-    }
-
-    if (model.parent && !model.code.startsWith(model.parent.code)) {
+        model.parent = undefined
+    } else if (!model.code.startsWith(rootCode) && model.parent) {
         model.code = `${model.parent.code}|${model.code}`
+    }
+
+    if (!model.code.startsWith(rootCode)) {
+        model.code = `${rootCode}|${model.code}`
+    }
+
+    if (!model.parent) {
+        if (model.code !== rootCode) {
+            model.parent = {
+                code: rootCode
+            }
+        }
+        //  else {
+        //     let parts = model.code.split('|')
+        //     model.parent = {
+        //         code: parts[0]
+        //     }
+
+        //     for (let index = 1; index < parts.length - 1; index++) {
+        //         const part = parts[index]
+        //         model.parent.code = `${model.parent.code}|${part}`
+        //     }
+        // }
     }
 
     let entity = await this.get(model, context)
 
     if (!entity) {
+        let template = await folderTemplateService.get(model.template || { code: model.code }, context)
+
+        if (template) {
+            model = await folderTemplateService.build(template, model, model.meta, template)
+        }
+
         entity = new db.folder({
+            name: model.code,
             status: 'active',
             owner: context.user,
             organization: context.organization,
@@ -118,7 +155,6 @@ exports.create = async (model, context) => {
     }
 
     await set(model, entity, context)
-
     await entity.save()
 
     await offline.queue('folder', 'create', entity, context)
@@ -156,7 +192,7 @@ exports.get = async (query, context) => {
         return db.folder.findById(query.id).populate(populate)
     }
 
-    if (query.name) {
+    if (!query.code && query.name) {
         query.code = query.name
     }
 
@@ -233,7 +269,7 @@ exports.remove = async (id, context) => {
         return 'folder does not exist'
     }
 
-    if (entity.code == rootCode) {
+    if (entity.code === rootCode) {
         return `${rootCode} folder can not deleted`
     }
 
@@ -303,6 +339,10 @@ exports.search = async (query, paging, context) => {
 
     if (query.entity) {
         where.entity = await entities.get(query.entity, context)
+    }
+
+    if (query.parent) {
+        where.parent = await this.get(query.parent, context)
     }
 
     if (query.owner) {

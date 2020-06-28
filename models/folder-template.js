@@ -13,6 +13,8 @@ module.exports = {
     tags: [{ type: String }], // can contain {{}}
     owner: String, // {{}}
 
+    parent: String,
+
     /**
      * if model.meta.entity it would be added to the file
     */
@@ -21,11 +23,6 @@ module.exports = {
     //     type: { type: String },
     //     name: String
     // },
-
-    /**
-     * will be used to generate the files from the templates
-    */
-    filesTemplates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'fileTemplate' }],
 
     /**
      * ------

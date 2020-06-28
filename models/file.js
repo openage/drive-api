@@ -5,15 +5,19 @@ module.exports = {
     trackingId: String,
     code: String, // gst id etc
     language: String, // hi-IN, en-US default - null (must exist)
-
+    timeStamp: Date,
     name: String, // or title GST, Aadhaar, PAN
     description: String, // TODO: rename to summary
 
     /**
      * content would be fetched/re-generated every time
-    */
+     */
+    isEnabled: Boolean,
     isDynamic: Boolean,
-
+    orderNo: {
+        type: Number,
+        default: 1000
+    },
     /**
      * in case the file is just a placeholder
      * the actual content does not exist user would be uploading it
@@ -21,7 +25,7 @@ module.exports = {
      * the name and code of the file would not change,
      * only the content, url,  would be updated and
      * isPlaceholder would be set to false
-    */
+     */
     isPlaceholder: Boolean,
     isRequired: Boolean,
     mimeTypes: [String], // acceptable file types
@@ -31,7 +35,10 @@ module.exports = {
         body: String,
 
         // the document would created from the template (can be regenerated)
-        template: { type: mongoose.Schema.Types.ObjectId, ref: 'template' },
+        template: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'template'
+        },
 
         // document is saved as local file
         path: String,
@@ -53,19 +60,28 @@ module.exports = {
     size: Number,
 
     /**
-    * how the user interact with content
-    */
+     * how the user interact with content
+     */
     // version control
     version: Number, // only one version of the code exists
 
     previous: {
         version: Number,
         timeStamp: Date,
-        file: { type: mongoose.Schema.Types.ObjectId, ref: 'file' },
-        creator: { type: mongoose.Schema.Types.ObjectId, ref: 'user' }
+        file: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'file'
+        },
+        creator: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'user'
+        }
     },
 
-    folder: { type: mongoose.Schema.Types.ObjectId, ref: 'folder' },
+    folder: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'folder'
+    },
 
     // viewing and sharing options
 
@@ -79,25 +95,47 @@ module.exports = {
     till: Date,
 
     viewers: [{
+        views: Number,
+        lastView: Number,
         timeStamp: Date,
-        user: { type: mongoose.Schema.Types.ObjectId, ref: 'user' }
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'user'
+        }
     }],
 
     isPublic: Boolean,
     sharedWith: [{ // TODO: rename to contributors
-        role: { type: String, enum: ['invited', 'editor', 'viewer', 'blocked'] },
+        role: {
+            type: String,
+            enum: ['invited', 'editor', 'viewer', 'blocked']
+        },
         expires: Date,
-        user: { type: mongoose.Schema.Types.ObjectId, ref: 'user' }
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'user'
+        }
     }],
 
-    creator: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
+    creator: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user'
+    },
 
     /**
      * the folder is tagged and discoverable with following attribute
      */
-    entity: { type: mongoose.Schema.Types.ObjectId, ref: 'entity' },
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
-    tags: [{ type: String }],
+    entity: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'entity'
+    },
+    owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user'
+    },
+    tags: [{
+        type: String
+    }],
     folderName: String,
 
     hooks: [{
@@ -138,9 +176,15 @@ module.exports = {
 
     status: {
         type: String,
-        enum: ['draft', 'submitted', 'approved', 'active', 'archived', 'canceled', 'removed', 'trash']
+        enum: ['draft', 'submitted', 'inactive', 'approved', 'active', 'archived', 'canceled', 'removed', 'trash']
     },
 
-    organization: { type: mongoose.Schema.Types.ObjectId, ref: 'organization' },
-    tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'tenant' }
+    organization: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'organization'
+    },
+    tenant: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'tenant'
+    }
 }

@@ -89,7 +89,7 @@ const merge = (model, data) => {
 }
 
 const set = async (model, entity, context) => {
-    if (model.code !== undefined && model.code != entity.code) {
+    if (model.code !== undefined && model.code !== entity.code) {
         let exists = await exports.get(model.code, context)
 
         if (exists) {
@@ -131,19 +131,19 @@ const set = async (model, entity, context) => {
         entity.thumbnail = model.thumbnail
     }
 
-    if (model.isPublic) {
+    if (model.isPublic !== undefined) {
         entity.isPublic = model.isPublic
     }
 
-    if (model.isDynamic) {
+    if (model.isDynamic !== undefined) {
         entity.isDynamic = model.isDynamic
     }
 
-    if (model.isPlaceholder) {
+    if (model.isPlaceholder !== undefined) {
         entity.isPlaceholder = model.isPlaceholder
     }
 
-    if (model.isRequired) {
+    if (model.isRequired !== undefined) {
         entity.isRequired = model.isRequired
     }
 
@@ -262,7 +262,11 @@ const fileBuilder = async (model, template, meta, context) => {
     })
     model.owner = await userService.get({ email: template.owner }, context)
     model.code = template.code
-    model.folder = await folderService.get({ name: template.folder, ownerId: model.owner.id }, context)
+    if (template.folder && model.owner) {
+        model.folder = await folderService.get({ name: template.folder, ownerId: model.owner.id }, context)
+    } else {
+        model.folder = await folderService.get({ name: template.folder }, context)
+    }
     model.language = template.language
     model.thumbnail = template.thumbnail
     model.isPublic = template.isPublic
@@ -298,6 +302,17 @@ const docBuilder = (template, context) => {
             return {
                 name: `${nameFormatter.inject(model)}.html`,
                 mimeType: 'text/html',
+                content: bodyFormatter.inject(model)
+            }
+        },
+        toXML: (data) => {
+            let model = {
+                data: data,
+                context: extractContext(context)
+            }
+            return {
+                name: `${nameFormatter.inject(model)}.xml`,
+                mimeType: 'text/xml',
                 content: bodyFormatter.inject(model)
             }
         },
@@ -337,7 +352,7 @@ const docBuilder = (template, context) => {
 }
 
 exports.build = async (model, meta, context) => {
-    context.logger.silly('services/task-templates:get')
+    let log = context.logger.start('services/folder-templates:build')
 
     meta = meta || {}
 
@@ -357,7 +372,13 @@ exports.build = async (model, meta, context) => {
         meta: meta
     }))
 
-    return fileBuilder(model, template, meta, context)
+    let file = await fileBuilder(model, template, meta, context)
+
+    file.meta = meta
+
+    log.end()
+
+    return file
 }
 
 exports.buildByModel = async (code, model, type, context) => {
@@ -376,6 +397,8 @@ exports.buildByModel = async (code, model, type, context) => {
             return builder.toHtml(items[0])
         case 'json':
             return builder.toJson(items[0])
+        case 'xml':
+            return builder.toXML(items[0])
         default:
             throw new Error('NOT_SUPPORTED')
     }
@@ -400,13 +423,15 @@ exports.buildById = async (code, id, type, context) => {
             return builder.toDocx(items[0])
         case 'json':
             return builder.toJson(items[0])
+        case 'xml':
+            return builder.toXML(items[0])
         default:
             throw new Error('NOT_SUPPORTED')
     }
 }
 
 exports.get = async (query, context) => {
-    context.logger.silly('services/task-templates:get')
+    context.logger.silly('services/file-templates:get')
 
     if (typeof query === 'string') {
         if (query.isObjectId()) {

@@ -81,7 +81,7 @@ exports.config = (awsBucketConfig) => {
 
         return {
             url: url,
-            thumbnail: meta.thumbnail,
+            thumbnail: meta.thumbnail || file.thumbnail,
             size: file.size,
             mimeType: mime.lookup(file.name),
             provider: 'aws-s3'

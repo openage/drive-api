@@ -4,6 +4,7 @@ const fs = require('fs')
 const changeCase = require('change-case')
 const definitions = require('../definitions')
 const multipart = require('connect-multiparty')
+const dir = require('../../helpers/dir')
 
 const getDefaultMethod = (httpAction, url) => {
     switch (httpAction.toLowerCase()) {
@@ -66,7 +67,7 @@ const getRoutes = (items) => {
             let filters = []
 
             if (action.consumes && action.consumes.find(a => a === 'multipart/form-data')) {
-                filters.push(multipart())
+                filters.push(multipart({ uploadDir: dir.temp() }))
             }
             if (action.filter) {
                 if (Array.isArray(action.filter)) {

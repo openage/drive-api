@@ -6,6 +6,7 @@ const api = require('./api-base')('files', 'file')
 const requestHelper = require('../helpers/paging')
 
 api.create = async (req) => {
+    let log = req.context.logger.start('api/files:create')
     if (req.files && req.files.file && req.body.request) {
         req.body = JSON.parse(req.body.request)
     }
@@ -17,15 +18,27 @@ api.create = async (req) => {
     model.isPublic = query.isPublic || model.isPublic
     model.isTemplate = query.isTemplate || model.isTemplate
     model.isVirtual = query.isVirtual || model.isVirtual
+    model.trashPrevious = query.trashPrevious || model.trashPrevious
     model.name = query.name || model.name
+    model.id = query.id || model.id
+    model.description = query.description || model.description
     model.code = query.code || model.code
     model.status = query.status || model.status
+    model.timemark = query.timemark || model.timemark
     model.template = query.template || model.template
     model.meta = query.meta || model.meta
+    model.overwrite = query.overwrite || model.overwrite
+    model.tags = query.tags || []
+    model.orderNo = query.orderNo || model.orderNo
 
     if (req.files) {
         model.content = {
             file: req.files.file
+        }
+        if (model.timemark) {
+            if (model.content && model.content.file) {
+                model.content.file.timemark = model.timemark
+            }
         }
     }
 

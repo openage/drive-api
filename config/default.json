@@ -20,9 +20,6 @@
     "auth": {
         "provider": "directory"
     },
-    "storage": {
-        "provider": "file-store"
-    },
     "message": {
         "provider": "send-it"
     },
@@ -41,6 +38,18 @@
             "api_key": "placeholder",
             "api_secret": "placeholder"
         },
+	"google-cloud": {
+	        "type": "placeholder",
+	        "project_id": "placeholder",
+	        "private_key_id": "placeholder",
+	        "private_key": "placeholder",
+	        "client_email": "placeholder",
+	        "client_id": "placeholder",
+	        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+	        "token_uri": "https://oauth2.googleapis.com/token",
+	        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+	        "client_x509_cert_url": "placeholder"
+	}
         "directory": {
             "url": "https://dev.openage.in/directory/api"
         },
@@ -59,7 +68,7 @@
             "colorize": true
         }
     },
-
+    "folders": {},
     "formats": {
         "date": "DD-MM-YYYY"
     },

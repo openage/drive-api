@@ -16,7 +16,17 @@ exports.toModel = function (entity, context) {
         code: entity.code,
         name: entity.name,
         summary: entity.summary,
-        config: entity.config,
+        language: entity.language,
+        thumbnail: entity.thumbnail,
+        isPublic: entity.isPublic,
+        isDynamic: entity.isDynamic,
+        isPlaceholder: entity.isPlaceholder,
+        isRequired: entity.isRequired,
+        mimeTypes: entity.mimeTypes || [],
+        tags: entity.tags || [],
+        owner: entity.owner,
+        status: entity.status,
+        folder: entity.folder ? { code: entity.folder } : undefined,
         timeStamp: entity.timeStamp
     }
 
@@ -27,22 +37,6 @@ exports.toModel = function (entity, context) {
             model.content = entity.content.body
         }
     }
-    model.tags = entity.tags
-    model.owner = entity.owner
-
-    if (entity.folder) {
-        model.folder = {
-            code: entity.folder
-        }
-    }
-
-    model.language = entity.language
-    model.thumbnail = entity.thumbnail
-    model.isPublic = entity.isPublic
-    model.isDynamic = entity.isDynamic
-    model.isPlaceholder = entity.isPlaceholder
-    model.isRequired = entity.isRequired
-    model.mimeTypes = entity.mimeTypes || []
 
     model.hooks = (entity.hooks || []).map(m => {
         return {
@@ -64,7 +58,38 @@ exports.toModel = function (entity, context) {
         }
     }
 
-    model.status = entity.status
+    return model
+}
+
+exports.toSummary = function (entity, context) {
+    if (!entity) {
+        return
+    }
+
+    if (entity._bsontype === 'ObjectId') {
+        return {
+            id: entity.toString()
+        }
+    }
+
+    let model = {
+        id: entity.id,
+        code: entity.code,
+        name: entity.name,
+        summary: entity.summary,
+        language: entity.language,
+        thumbnail: entity.thumbnail,
+        isPublic: entity.isPublic,
+        isDynamic: entity.isDynamic,
+        isPlaceholder: entity.isPlaceholder,
+        isRequired: entity.isRequired,
+        mimeTypes: entity.mimeTypes || [],
+        tags: entity.tags || [],
+        owner: entity.owner,
+        status: entity.status,
+        folder: entity.folder ? { code: entity.folder } : undefined,
+        timeStamp: entity.timeStamp
+    }
 
     return model
 }

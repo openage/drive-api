@@ -19,6 +19,7 @@ module.exports = {
     name: String, // or title = {{}},
     summary: String, // {{}}
     content: {
+        url: String, // {{}} would go in as content.url
         body: String // {{}} would go in as content.body
     },
     tags: [{ type: String }], // can contain {{}}
@@ -32,6 +33,8 @@ module.exports = {
     //     type: { type: String },
     //     name: String
     // },
+
+    meta: Object,
 
     /**
      * folder to which this file will be copied
